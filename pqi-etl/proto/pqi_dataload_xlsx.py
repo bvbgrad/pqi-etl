@@ -8,7 +8,8 @@ def xlsx_reader(filename):
     rows = []
     try:
         wb = load_workbook(filename=filename, read_only=True)
-        ws = wb.active
+        print(f"Worksheets: {wb.sheetnames}")
+        ws = wb[wb.sheetnames[0]]
         for row in ws.values:
             rows.append(row)
         wb.close()
@@ -89,6 +90,27 @@ def create_xlsx(file_name, sheetName, columns, dataRows):
   finally:
       wb.close()
 
+def find_champion_status(championNames, memberNames, nonMemberNames):
+  statusList = []
+  for champion in championNames:
+    if champion in memberNames:
+      status = 'member'
+    elif champion in nonMemberNames:
+      status = 'non-member'
+    else:
+      status = 'neither'
+    statusList.append((champion, status,))
+
+  histogramCount = {}
+  for champion, status in statusList:
+    try:
+        histogramCount[status] += 1
+    except KeyError:
+        histogramCount[status] = 1
+  print(f"\nChampion status histogram = {histogramCount}")
+
+  return statusList
+
 
 # bvb TODO Add relative Path to the data folder
 if __name__ == "__main__":
@@ -101,7 +123,7 @@ if __name__ == "__main__":
   print(f"Member unique names: {len(memberNames)}")
   create_xlsx('pqi-etl/data/member_unique_names', 'names', columns, memberNames)
 
-  nonMemberRows = xlsx_reader("pqi-etl/data/20221125_non_members_export_excel_ymx(1).xlsx")
+  nonMemberRows = xlsx_reader("pqi-etl/data/20221125_non_members_export_excel_ymx.xlsx")
   columns = [('Last Name', 2,), ('First Name', 3)]
   # Exclude header row from row count
   print(f"\nNon-Members (xlsx): {len(nonMemberRows) - 1}")
@@ -110,9 +132,12 @@ if __name__ == "__main__":
   create_xlsx('pqi-etl/data/non_member_unique_names', 'names', columns, nonMemberNames)
 
   championRows = xlsx_reader("pqi-etl/data/Master List of all SPEAK UP Champion Attendees.xlsx")
-  columns = [('Last Name', 1,), ('First Name', 0), ('Email', 2)]
+  columns = [('Last Name', 1,), ('First Name', 0)]
+  # columns = [('Last Name', 1,), ('First Name', 0), ('Email', 2)]
   # Exclude header row from row count
   print(f"\nChampions (xlsx): {len(championRows) - 1}")
   championNames = create_name_dataset(championRows, columns)
   print(f"Champion unique names: {len(championNames)}")
   create_xlsx('pqi-etl/data/champion_unique_names', 'names', columns, championNames)
+
+  stausList = find_champion_status(championNames, memberNames, nonMemberNames)
