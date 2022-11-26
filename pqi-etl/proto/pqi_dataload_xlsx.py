@@ -15,6 +15,7 @@ def xlsx_reader(filename):
         wb.close()
     except Exception as e:
         print(f"Supported formats are: .xlsx,.xlsm,.xltx,.xltm \n  {e}")
+    wb.close()
     return rows
 
 def create_name_dataset(rows, columns):
@@ -90,6 +91,98 @@ def create_xlsx(file_name, sheetName, columns, dataRows):
   finally:
       wb.close()
 
+
+def create_champion_actions_xlsx(file_name, statusList, memberRows, nonMemberRows, championRows):
+  createNewMemberColumnNames = ['Last Name', 'First Name', 'Email', 'Username']
+  upgradeMemberColumnNames = ['Last Name', 'First Name', 'Email', 'Website ID', 'Username']
+  verifyColumnNames = ['Last Name', 'First Name', 'Email']
+  
+  wb = Workbook()
+  ws = wb.active
+  ws.title = 'Create'
+  ws.append(createNewMemberColumnNames)
+  for name, status in statusList:
+    if status == 'non-member':
+      lastName, firstName = name
+      emailValue = 'N/A'
+      # Do a full 'table' scan for each individual 
+      for item in championRows:
+        if (item[0] == firstName) and (item[1] == lastName):
+          emailValue = item[2]
+      if len(lastName) < 9:
+        userName = lastName + firstName[0:1]
+      else:
+        userName = lastName[0:9] + firstName[0:1]
+      userName = userName.lower()
+      row = name
+      row = (*row, emailValue, userName,)
+      ws.append(row)
+    else:
+      continue
+  ws.freeze_panes = 'A2'
+  ws.auto_filter.ref = ws.dimensions
+  # ws["A1"].fill = PatternFill("solid", start_color="c9c9c9")
+
+  wb.create_sheet('Upgrade')
+  ws = wb['Upgrade']
+  ws.append(upgradeMemberColumnNames)
+  for name, status in statusList:
+    lastName, firstName = name
+    if status == 'member':
+      emailValue = 'N/A'
+      for item in memberRows:
+        if (item[4] == firstName) and (item[3] == lastName):
+          # Column L (Website ID (RO)) in the member export spreadsheet
+          memberID = item[11] ;
+          # Column W in the member export spreadsheet
+          memberUsername = item[22] ;
+          # Column Y in the member export spreadsheet
+          memberEmailValue = item[24] ;
+      row = name
+      row = (*row, memberEmailValue, memberID, memberUsername, )
+      ws.append(row)
+    else:
+      continue
+  ws.freeze_panes = 'A2'
+  ws.auto_filter.ref = ws.dimensions
+  # ws["A1"].fill = PatternFill("solid", start_color="c9c9c9")
+
+  wb.create_sheet('Verify')
+  ws = wb['Verify']
+  ws.append(verifyColumnNames)
+  for name, status in statusList:
+    if status == 'neither':
+      lastName, firstName = name
+      emailValue = 'N/A'
+        # Do a full 'table' scan for each individual 
+      for item in championRows:
+        if (item[0] == firstName) and (item[1] == lastName):
+          emailValue = item[2]
+      row = name
+      row = (*row, emailValue, )
+      ws.append(row)
+    else:
+      continue
+  ws.freeze_panes = 'A2'
+  ws.auto_filter.ref = ws.dimensions
+  # ws["A1"].fill = PatternFill("solid", start_color="c9c9c9")
+
+  try:
+    file_name_xlsx = file_name + '.xlsx'
+    wb.save(file_name_xlsx)
+    print(f"Summary Excel report saved to '{file_name_xlsx}.xlsx'.")
+
+  except PermissionError:
+      print(f"Could not save worksheet: '{file_name_xlsx}'\nCheck if a previous version is open in Excel.")
+      # sg.popup_error("Could not save 'account_summary' report\nCheck if a previous version is open in Excel.")
+      # window['-STATUS-'].update("'Save Report' operation canceled.")
+  except Exception as err:
+      print(f"Error saving worksheet\n  {err}")
+      # sg.popup_error(f"Error saving account_summary report\n  {err}")
+  finally:
+      wb.close()
+
+
 def find_champion_status(championNames, memberNames, nonMemberNames):
   statusList = []
   for champion in championNames:
@@ -140,4 +233,6 @@ if __name__ == "__main__":
   print(f"Champion unique names: {len(championNames)}")
   create_xlsx('pqi-etl/data/champion_unique_names', 'names', columns, championNames)
 
-  stausList = find_champion_status(championNames, memberNames, nonMemberNames)
+  fileName = "pqi-etl/data/champion_email_action.xlsx"
+  statusList = find_champion_status(championNames, memberNames, nonMemberNames)
+  create_champion_actions_xlsx(fileName, statusList, memberRows, nonMemberRows, championRows)
