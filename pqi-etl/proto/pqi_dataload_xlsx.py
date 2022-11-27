@@ -177,6 +177,7 @@ def create_champion_actions_xlsx(file_name, statusList, memberRows, nonMemberRow
 
 def find_champion_status(championNames, memberNames, nonMemberNames):
   statusList = []
+  count = 0
   for champion in championNames:
     status = 'verify'
     lastNameChampion, firstNameChampion, emailChampion = champion
@@ -191,30 +192,34 @@ def find_champion_status(championNames, memberNames, nonMemberNames):
         status = 'non-member'
     if emailChampion is None or emailChampion == '':
       status = 'verify'
-  # For blank champion email addresses see if can find in YM downloads using First & Last names
+  # Email check failed: see if can find in YM downloads using First & Last names
     if status == 'verify':
-      bFound = False
       for keyValues in memberNames:
         lastName, firstName, emailMember = keyValues
         if (firstNameChampion == firstName) and (lastNameChampion == lastName):
           if emailChampion != emailMember:
             print(f"{firstNameChampion} {lastNameChampion} status changed based on name match:")
-            print(f"   champion email = '{emailChampion}' - Member email = '{emailMember}'")
+            print(f"   Champion email = '{emailChampion}' - Member email = '{emailMember}'")
           status = 'member'
-          bFound = True
+          count += 1
+          print(f"   Status changed from 'verify' to '{status}'.")
+          break
       for keyValues in nonMemberNames:
         lastName, firstName, emailNonMember = keyValues
         if (firstNameChampion == firstName) and (lastNameChampion == lastName):
           if emailChampion != emailNonMember:
             print(f"{firstNameChampion} {lastNameChampion} status changed based on name match:")
-            print(f"   champion email = '{emailChampion}' - Non-member email = '{emailMember}'")
+            print(f"   Champion email = '{emailChampion}' - Non-member email = '{emailNonMember}'")
           status = 'non-member'
-          bFound = True
-      if bFound:
-        print(f"   Status changed from 'verify' to '{status}'.")
-
+          count += 1
+          print(f"   Status changed from 'verify' to '{status}'.")
   # Need champion key values in next stage of the process
     statusList.append((champion, status,))
+
+  if count == 0:
+    print("No status changes based on a name match process rather than an email match")
+  else:
+    print(f"There were {count} status changes based on a name match process rather than an email match")
 
   histogramCount = {}
   for champion, status in statusList:
