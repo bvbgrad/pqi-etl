@@ -1,8 +1,105 @@
 import csv
+import secrets
 
 from datetime import datetime
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill
+
+RI = {'A':0, 'B':1, 'C':2, 'D':3, 'E':4, 'F':5, 'G':6, 'H':7, 'I':8, 'J':9, 
+  'K':10, 'L':11, 'M':12, 'N':13, 'O':14, 'P':15, 'Q':16, 'R':17, 'S':18,
+  'T':19, 'U':20, 'V':21, 'W':22, 'X':23, 'Y':24, 'Z':25}
+NewMemberCols = {
+  "Member Type Code": "",
+  "Username": "",
+  "Password": "",
+  "First Name": "",
+  "Last Name": "",
+  "Email Address": "",
+  "Middle Name": "",
+  "Maiden Name": "",
+  "Nickname": "",
+  "Member Name Title": "Professional Title",
+  "Member Name Suffix": "Name Suffix",
+  "Gender": "",
+  "Registration Date": "",
+  "Member Approved": "",
+  "Membership": "",
+  # "Date Membership Expires": "",
+  # "Membership Expires": "",
+  "Date Last Renewed": "",
+  "Email Bounced": "",
+  "Home Address Line 1": "",
+  "Home Address Line 2": "",
+  "Home City": "",
+  "Home Location": "",
+  "Home Postal Code": "",
+  "Home Country": "",
+  "Home Phone Area Code": "",
+  "Home Phone": "",
+  "Mobile Area Code": "",
+  "Mobile": "",
+  "Employer Name": "Organization Name",
+  "Professional Title": "",
+  "Profession": "",
+  "Employer Address Line 1": "",
+  "Employer Address Line 2": "",
+  "Employer City": "",
+  "Employer Location": "",
+  "Employer Postal Code": "",
+  "Employer Country": "",
+  "Employer Phone Area Code": "",
+  "Employer Phone": "",
+  "Employer Website": "",
+  "Internal Comments": "",
+  "Champion": ""
+}
+
+def generate_username(keyValues):
+  lastName, firstName, emailValue = keyValues
+  if len(lastName) < 9:
+    userName = lastName + firstName[0:1]
+  else:
+    userName = lastName[0:9] + firstName[0:1]
+  userName = userName.lower()
+  return userName
+
+
+def generate_password():
+  return secrets.token_urlsafe(8)
+
+def find_download_data_row(dataRows, eMail, emailColNum):
+  for dataRow in dataRows:
+    if dataRow[emailColNum] == eMail:
+      return dataRow
+
+def get_data_value(row, indexNum):
+  if row is not None:
+    rowList = list(row)
+    value = rowList[indexNum]
+    if value is None:
+      value = ''
+  else:
+    print(f"Index: {indexNum} row {row}")
+  return value
+
+def fill_row_values(keyValues, championRow, nonMemberRow):
+  memberTypeCode = 'BasicI'
+  username = generate_username(keyValues)
+  password = generate_password()
+  middleName = nonMemberRow[RI['F']]
+  nameSuffix = nonMemberRow[RI['H']]
+  organization = championRow[RI['D']]
+  websiteId = nonMemberRow[RI['K']]
+
+  # middleName = get_data_value(nonMemberRow, RI['F'])
+  # nameSuffix = get_data_value(nonMemberRow, RI['H'])
+  # organization = get_data_value(championRow, RI['D'])
+  # websiteId = get_data_value(nonMemberRow, RI['K'])
+
+  row = ( memberTypeCode, *keyValues, websiteId, username, password, middleName, nameSuffix, organization,)
+
+  return row
+
 
 def xlsx_reader(filename):
     rows = []
@@ -93,7 +190,7 @@ def create_xlsx(file_name, sheetName, columns, dataRows):
 
 
 def create_champion_actions_xlsx(file_name, statusList, memberRows, nonMemberRows, championRows):
-  createNewMemberColumnNames = ['Last Name', 'First Name', 'Email', 'Username']
+  createNewMemberColumnNames = ['Last Name', 'First Name', 'Email', 'Username', 'Password']
   upgradeMemberColumnNames = ['Last Name', 'First Name', 'Email', 'Username', 'Website ID', 'Champion']
   verifyColumnNames = ['Last Name', 'First Name', 'Email']
   
@@ -104,19 +201,18 @@ def create_champion_actions_xlsx(file_name, statusList, memberRows, nonMemberRow
   for keyValues, status in statusList:
     if status == 'non-member':
       lastName, firstName, emailValue = keyValues
-      if len(lastName) < 9:
-        userName = lastName + firstName[0:1]
+      championRow = find_download_data_row(championRows, emailValue, RI['C'])
+      nonMemberRow = find_download_data_row(nonMemberRows, emailValue, RI['U'])
+      if championRow is None or nonMemberRow is None:
+        print(f"Skipping {keyValues}")
       else:
-        userName = lastName[0:9] + firstName[0:1]
-      userName = userName.lower()
-      row = keyValues
-      row = (*row, userName,)
-      ws.append(row)
+        row = fill_row_values(keyValues, championRow, nonMemberRow)
+        ws.append(row)
     else:
       continue
   ws.freeze_panes = 'A2'
   ws.auto_filter.ref = ws.dimensions
-  # ws["A1"].fill = PatternFill("solid", start_color="c9c9c9")
+  ws["A1"].fill = PatternFill("solid", start_color="c9c9c9")
 
   wb.create_sheet('Upgrade')
   ws = wb['Upgrade']
@@ -139,25 +235,19 @@ def create_champion_actions_xlsx(file_name, statusList, memberRows, nonMemberRow
       continue
   ws.freeze_panes = 'A2'
   ws.auto_filter.ref = ws.dimensions
-  # ws["A1"].fill = PatternFill("solid", start_color="c9c9c9")
+  ws["A1"].fill = PatternFill("solid", start_color="c9c9c9")
 
   wb.create_sheet('Verify')
   ws = wb['Verify']
   ws.append(verifyColumnNames)
   for keyValues, status in statusList:
     if status == 'verify':
-      lastName, firstName, emailValue = keyValues
-        # Do a full 'table' scan for each individual 
-      # for item in championRows:
-      #   if (item[0] == firstName) and (item[1] == lastName):
-      #     emailValue = item[2]
-      row = keyValues
       ws.append(row)
     else:
       continue
   ws.freeze_panes = 'A2'
   ws.auto_filter.ref = ws.dimensions
-  # ws["A1"].fill = PatternFill("solid", start_color="c9c9c9")
+  ws["A1"].fill = PatternFill("solid", start_color="c9c9c9")
 
   try:
     file_name_xlsx = file_name + '.xlsx'
