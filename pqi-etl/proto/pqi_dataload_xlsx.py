@@ -141,21 +141,15 @@ def create_name_dataset(rows, columns):
   
   return sortedDataset
 
-
-def create_csv(file_name, columns, dataRows):
-  columnNames = []
-  for columnName, columnIndex in columns:
-    columnNames.append(columnName)
+def create_csv(file_name_csv, dataRows):
   try:
-    with open(file_name, mode='w', newline='') as csv_out:
-        writer = csv.DictWriter(csv_out, fieldnames=columnNames)
-        writer.writeheader()
+    with open(file_name_csv, mode='w', newline='') as csv_out:
+        writer = csv.writer(csv_out)
         writer.writerows(dataRows)
-    file_name_csv = file_name + '.csv'
     print(f"Summary CSV report saved to '{file_name_csv}'.  It has {len(dataRows)} rows.")
     print(f"Summary report saved at: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
   except Exception as err:
-      print(f"Error saving worksheet\n  {err}")
+      print(f"Error saving csv worksheet\n  {err}")
       # sg.popup_error(f"Error saving account_summary report\n  {err}")
 
 
@@ -228,9 +222,9 @@ def create_champion_actions_xlsx(file_name, statusList, memberRows, nonMemberRow
           # Column W in the member export spreadsheet
           memberUsername = item[22] ;
           championFlag = 'Yes' ;
-      row = keyValues
-      row = (*row, memberUsername, memberID, championFlag)
-      ws.append(row)
+          row = keyValues
+          row = (*row, memberUsername, memberID, championFlag)
+          ws.append(row)
     else:
       continue
   ws.freeze_panes = 'A2'
@@ -250,12 +244,11 @@ def create_champion_actions_xlsx(file_name, statusList, memberRows, nonMemberRow
   ws["A1"].fill = PatternFill("solid", start_color="c9c9c9")
 
   try:
-    file_name_xlsx = file_name + '.xlsx'
-    wb.save(file_name_xlsx)
-    print(f"Summary Excel report saved to '{file_name_xlsx}.xlsx'.")
+    wb.save(file_name)
+    print(f"Summary Excel report saved to '{file_name}'.")
 
   except PermissionError:
-      print(f"Could not save worksheet: '{file_name_xlsx}'\nCheck if a previous version is open in Excel.")
+      print(f"Could not save worksheet: '{file_name}'\nCheck if a previous version is open in Excel.")
       # sg.popup_error("Could not save 'account_summary' report\nCheck if a previous version is open in Excel.")
       # window['-STATUS-'].update("'Save Report' operation canceled.")
   except Exception as err:
@@ -361,3 +354,22 @@ if __name__ == "__main__":
   fileName = "pqi-etl/data/champion_email_action.xlsx"
   statusList = find_champion_status(championNames, memberNames, nonMemberNames)
   create_champion_actions_xlsx(fileName, statusList, memberRows, nonMemberRows, championRows)
+
+  fileNameCsv = "pqi-etl/data/champion_update_action.csv"
+  upgradeCsvColumnNames = ['Website ID', 'Champion']
+  dataRows = []
+  dataRows.append(upgradeCsvColumnNames)
+  for keyValues, status in statusList:
+    lastName, firstName, emailValue = keyValues
+    if status == 'member':
+      for i, item in enumerate(memberRows, 1):
+  # Column Y (email address)) in the member export spreadsheet
+        if item[24] is not None:
+          emailMember = item[24].lower()
+          if emailMember == emailValue.lower():
+    # Column L (Website ID (RO)) in the member export spreadsheet
+            memberID = item[11] ;
+            championFlag = 'Yes' ;
+            row = list((memberID, championFlag,))
+            dataRows.append(row)
+  create_csv(fileNameCsv, dataRows)
