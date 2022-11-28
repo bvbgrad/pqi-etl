@@ -83,6 +83,7 @@ def get_data_value(row, indexNum):
   return value
 
 def fill_row_values(keyValues, championRow, nonMemberRow):
+  lastName, firstName, emailValue = keyValues
   memberTypeCode = 'BasicI'
   username = generate_username(keyValues)
   password = generate_password()
@@ -96,7 +97,7 @@ def fill_row_values(keyValues, championRow, nonMemberRow):
   # organization = get_data_value(championRow, RI['D'])
   # websiteId = get_data_value(nonMemberRow, RI['K'])
 
-  row = ( memberTypeCode, *keyValues, websiteId, username, password, middleName, nameSuffix, organization,)
+  row = (memberTypeCode, lastName, firstName, middleName, nameSuffix, emailValue, username, password, organization, websiteId, )
 
   return row
 
@@ -184,7 +185,8 @@ def create_xlsx(file_name, sheetName, columns, dataRows):
 
 
 def create_champion_actions_xlsx(file_name, statusList, memberRows, nonMemberRows, championRows):
-  createNewMemberColumnNames = ['Last Name', 'First Name', 'Email', 'Username', 'Password']
+  createNewMemberColumnNames = ['Member Type Code', 'Last Name', 'First Name', 'Middle Name', 'Name Suffix',
+    'Email', 'Username', 'Password', 'Organization Name', 'Website ID', 'Champion']
   upgradeMemberColumnNames = ['Last Name', 'First Name', 'Email', 'Username', 'Website ID', 'Champion']
   verifyColumnNames = ['Last Name', 'First Name', 'Email']
   
@@ -205,6 +207,7 @@ def create_champion_actions_xlsx(file_name, statusList, memberRows, nonMemberRow
         print(f"nonMember row empty: Skipping {keyValues}")
       else:
         row = fill_row_values(keyValues, championRow, nonMemberRow)
+        row = (*row, 'Yes')
         ws.append(row)
     else:
       continue
@@ -356,9 +359,9 @@ if __name__ == "__main__":
   print(f"Champion unique names: {len(championNames)}")
   create_xlsx('pqi-etl/data/champion_unique_names', 'names', columns, championNames)
 
-  fileName = "pqi-etl/data/champion_email_action.xlsx"
+  fileNameEmailAction = "pqi-etl/data/champion_email_action.xlsx"
   statusList = find_champion_status(championNames, memberNames, nonMemberNames)
-  create_champion_actions_xlsx(fileName, statusList, memberRows, nonMemberRows, championRows)
+  create_champion_actions_xlsx(fileNameEmailAction, statusList, memberRows, nonMemberRows, championRows)
 
   fileNameCsv = "pqi-etl/data/champion_update_action.csv"
   upgradeCsvColumnNames = ['Website ID', 'Champion']
@@ -380,3 +383,7 @@ if __name__ == "__main__":
         else:
           print(f"working on {keyValues} Empty email on memberRow {i:5} ")
   create_csv(fileNameCsv, dataRows)
+
+  fileNameCreateActionCsv = "pqi-etl/data/champion_create_action.csv"
+  dataRows = xlsx_reader(fileNameEmailAction)
+  create_csv(fileNameCreateActionCsv, dataRows)
