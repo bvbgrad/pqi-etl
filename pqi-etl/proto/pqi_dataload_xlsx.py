@@ -197,8 +197,12 @@ def create_champion_actions_xlsx(file_name, statusList, memberRows, nonMemberRow
       lastName, firstName, emailValue = keyValues
       championRow = find_download_data_row(championRows, emailValue, RI['C'])
       nonMemberRow = find_download_data_row(nonMemberRows, emailValue, RI['U'])
-      if championRow is None or nonMemberRow is None:
-        print(f"Skipping {keyValues}")
+      if championRow is None and nonMemberRow is None:
+        print(f"Champion and nonMember rows are empty: Skipping {keyValues}")
+      elif championRow is None:
+        print(f"Champion row empty: Skipping {keyValues}")
+      elif nonMemberRow is None:
+        print(f"nonMember row empty: Skipping {keyValues}")
       else:
         row = fill_row_values(keyValues, championRow, nonMemberRow)
         ws.append(row)
@@ -236,6 +240,7 @@ def create_champion_actions_xlsx(file_name, statusList, memberRows, nonMemberRow
   ws.append(verifyColumnNames)
   for keyValues, status in statusList:
     if status == 'verify':
+      row = keyValues
       ws.append(row)
     else:
       continue
@@ -372,4 +377,6 @@ if __name__ == "__main__":
             championFlag = 'Yes' ;
             row = list((memberID, championFlag,))
             dataRows.append(row)
+        else:
+          print(f"working on {keyValues} Empty email on memberRow {i:5} ")
   create_csv(fileNameCsv, dataRows)
