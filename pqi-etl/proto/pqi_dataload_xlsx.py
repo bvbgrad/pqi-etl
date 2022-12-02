@@ -1,4 +1,5 @@
 import csv
+import re
 import secrets
 
 from datetime import datetime
@@ -24,7 +25,7 @@ NewMemberCols = {
   "Member Approved": "",
   "Membership": "",
   # "Date Membership Expires": "",
-  # "Membership Expires": "",
+  "Membership Expires": "",
   # "Date Last Renewed": "",
   "Email Bounced": "",
   "Home Address Line 1": "",
@@ -53,20 +54,44 @@ NewMemberCols = {
   "Champion": ""
 }
 
+usernameSet = set()
 def generate_username(lastName, firstName):
   if lastName is None and firstName is None:
     userName = secrets.token_urlsafe(9)
-  elif lastName is None:
+  elif lastName == '' or lastName is None:
     userName = firstName[0:9]
-  elif firstName is None:
+  elif firstName == '' or firstName is None:
     userName = lastName[0:9]
   elif len(lastName) < 9:
-    userName = lastName + firstName[0:1]
+    try:
+      userName = lastName + firstName[0:1]
+    except Exception as e:
+      userName = 'no-name'
+      print(e)
   else:
     userName = lastName[0:9] + firstName[0:1]
   userName = userName.lower()
+  bduplicate = True
+  numSuffix = 1
+  # check if the username is unique by trying to add it to a set
+  # assume not unique so will have at least one pass through the loop
+  # if not unique, add monotonic incremented number until the new username is unique
+  while bduplicate:
+    try:
+      if userName in usernameSet:
+        userName = userName + str(numSuffix)
+        numSuffix += 1
+      else:
+        usernameSet.add(userName)
+        bduplicate = False
+    except Exception as e:
+      print(f"Error creating unique username: {e}")
+
   return userName
 
+
+      # usernameSet.add(userName)
+      # bduplicate = False
 
 def generate_password():
   return secrets.token_urlsafe(8)
@@ -105,16 +130,21 @@ def fill_create_row_values(championRow, nonMemberRow):
       rowDict['Champion'] = 'Yes'
     elif key == 'Member Type Code':
       rowDict['Member Type Code'] = 'BasicI'
+    elif key == 'Membership':
+      rowDict['Membership'] = 'Basic Individual Subscription (Free)'
+    elif key == 'Membership Expires':
+      rowDict['Membership Expires'] = 'No'
     elif key == 'Member Approved':
       rowDict['Member Approved'] = 'Yes'
     elif key == 'Username':
       rowDict['Username'] = generate_username(championRow['Last Name'], championRow['First Name'])
     elif key == 'Password':
       rowDict['Password'] = generate_password()
-    elif key == 'Organization':
-      rowDict['Organization'] = championRow['Organization']
+    elif key == 'Organization Name':
+      rowDict['Organization Name'] = championRow['Organization']
     else:
       rowDict[key] = nonMemberRow[key]
+
   return rowDict
 
 
@@ -238,6 +268,24 @@ def create_xlsx_selected_columns(file_name, sheetName, columns, dataRows):
       wb.close()
 
 
+def adjust_name_columns(rowDict):
+  newRowDict = rowDict
+  if rowDict['Last Name'] == '' or rowDict['Last Name'] is None:
+    # newFirstName = re.sub(r"[^a-zA-Z0-9 ]", "", rowDict['First Name'])
+    newFirstName = rowDict['First Name']
+    nameSplit = newFirstName.split(' ', 1)
+    numNames = len(nameSplit)
+    if numNames > 1:
+      newRowDict['Last Name'] = nameSplit[1]
+      newRowDict['First Name'] = nameSplit[0]
+    else:
+      newRowDict['Last Name'] = 'NLN'
+
+    newRowDict['Last Name'] = newRowDict['Last Name'][0:1].upper() + newRowDict['Last Name'][1:]
+    newRowDict['First Name'] = newRowDict['First Name'][0:1].upper() + newRowDict['First Name'][1:]
+  return newRowDict
+
+
 def create_champion_actions_xlsx(file_name, statusList, memberRows, nonMemberRows, championRows):
   upgradeMemberColumnNames = ['Last Name', 'First Name', 'Email', 'Username', 'Website ID', 'Champion']
   verifyColumnNames = ['Last Name', 'First Name', 'Email']
@@ -257,8 +305,10 @@ def create_champion_actions_xlsx(file_name, statusList, memberRows, nonMemberRow
       elif nonMemberRow is None:
         print(f"nonMember row empty: Skipping {keyValues}")
       else:
-        rowDict = fill_create_row_values(championRow, nonMemberRow)
-        ws.append(list(rowDict.values()))
+        RowDict = fill_create_row_values(championRow, nonMemberRow)
+        newRowDict = adjust_name_columns(RowDict)
+        ws.append(list(newRowDict.values()))
+        # ws.append(list(RowDict.values()))
     else:
       continue
   ws.freeze_panes = 'A2'
