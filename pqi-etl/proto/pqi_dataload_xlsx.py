@@ -6,6 +6,17 @@ from datetime import datetime
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill
 
+BaseDir = 'pqi-etl/data/'
+ChampionFile = BaseDir + '20230119 Master List of all SPEAK UP Champion Attendees.xlsx'
+MemberFile = BaseDir + '20230119_member_export_ymx.xlsx'
+NonMemberFile = BaseDir + '2023011901_non_member_export_ymx.xlsx'
+UniqueNamesOutFile = BaseDir + 'out.member_unique_names'
+NonMemberUniqueNamesOutFile = BaseDir + 'out.non_member_unique_names'
+ChampionUniqueNamesOutFile = BaseDir + 'out.champion_unique_names'
+ChampionEmailActionOutFile = BaseDir + 'out.champion_email_action.xlsx'
+ChampionUpdateActionOutFile = BaseDir + 'out.champion_update_action.csv'
+ChampionCreateActionOutFile = BaseDir + 'out.champion_create_action.csv'
+
 RI = {'A':0, 'B':1, 'C':2, 'D':3, 'E':4, 'F':5, 'G':6, 'H':7, 'I':8, 'J':9, 
   'K':10, 'L':11, 'M':12, 'N':13, 'O':14, 'P':15, 'Q':16, 'R':17, 'S':18,
   'T':19, 'U':20, 'V':21, 'W':22, 'X':23, 'Y':24, 'Z':25}
@@ -436,38 +447,36 @@ def find_champion_status(championNames, memberNames, nonMemberNames):
 # bvb TODO Add relative Path to the data folder
 if __name__ == "__main__":
 
-  memberRows = xlsx_reader("pqi-etl/data/20221125_members_export_excel_ymx.xlsx")
+  memberRows = xlsx_reader(MemberFile)
   print(f"Members (xlsx): {len(memberRows)}")
   # Column Y (zero based index = 24) contains the email value in the member export spreadsheet
   # columns = [('Last Name', 3,), ('First Name', 4,), ('Email Address', 24,)]
   columns = ('Last Name', 'First Name', 'Email Address',)
   memberNames = create_name_dataset_keyed(memberRows, columns)
   print(f"Member unique names: {len(memberNames)}")
-  create_xlsx_selected_columns('pqi-etl/data/member_unique_names', 'names', columns, memberNames)
+  create_xlsx_selected_columns(UniqueNamesOutFile, 'names', columns, memberNames)
 
-  nonMemberRows = xlsx_reader("pqi-etl/data/20221125_non_members_export_excel_ymx.xlsx")
+  nonMemberRows = xlsx_reader(NonMemberFile)
   print(f"\nNon-Members (xlsx): {len(nonMemberRows)}")
   # Column U (zero based index = 20) contains the email value in the non_member export spreadsheet
   # columns = [('Last Name', 2,), ('First Name', 3,), ('Email Address', 20,)]
   columns = ('Last Name', 'First Name', 'Email Address',)
   nonMemberNames = create_name_dataset_keyed(nonMemberRows, columns)
   print(f"Non-Member unique names: {len(nonMemberNames)}")
-  create_xlsx_selected_columns('pqi-etl/data/non_member_unique_names', 'names', columns, nonMemberNames)
+  create_xlsx_selected_columns(NonMemberUniqueNamesOutFile, 'names', columns, nonMemberNames)
 
-  championRows = xlsx_reader("pqi-etl/data/Master List of all SPEAK UP Champion Attendees.xlsx")
+  championRows = xlsx_reader(ChampionFile)
   print(f"\nChampions (xlsx): {len(championRows)}")
   # Column C (zero based index = 2) contains the email value in the champion export spreadsheet
   # columns = [('Last Name', 1,), ('First Name', 0), ('Email', 2)]
   columns = ('Last Name', 'First Name', 'Email',)
   championNames = create_name_dataset_keyed(championRows, columns)
   print(f"Champion unique names: {len(championNames)}")
-  create_xlsx_selected_columns('pqi-etl/data/champion_unique_names', 'names', columns, championNames)
+  create_xlsx_selected_columns(ChampionUniqueNamesOutFile, 'names', columns, championNames)
 
-  fileNameEmailAction = "pqi-etl/data/champion_email_action.xlsx"
   statusList = find_champion_status(championNames, memberNames, nonMemberNames)
-  create_champion_actions_xlsx(fileNameEmailAction, statusList, memberRows, nonMemberRows, championRows)
+  create_champion_actions_xlsx(ChampionEmailActionOutFile, statusList, memberRows, nonMemberRows, championRows)
 
-  fileNameCsv = "pqi-etl/data/champion_update_action.csv"
   upgradeCsvColumnNames = ['Website ID', 'Champion']
   dataRows = []
   dataRows.append(upgradeCsvColumnNames)
@@ -486,10 +495,10 @@ if __name__ == "__main__":
             dataRows.append(row)
         # else:
         #   print(f"working on {keyValues} Empty email on memberRow {i:5} ")
-  create_csv(fileNameCsv, dataRows)
+  create_csv(ChampionUpdateActionOutFile, dataRows)
 
-  fileNameCreateActionCsv = "pqi-etl/data/champion_create_action.csv"
-  dataRowsDict = xlsx_reader(fileNameEmailAction)
+  # WE DO USE CREATED FILE FOR INPUT
+  dataRowsDict = xlsx_reader(ChampionEmailActionOutFile)
   dataRows = []
   bHeaderAdd = True
   for row in dataRowsDict:
@@ -497,4 +506,4 @@ if __name__ == "__main__":
       dataRows.append(row.keys())
       bHeaderAdd = False
     dataRows.append(list(row.values()))
-  create_csv(fileNameCreateActionCsv, dataRows)
+  create_csv(ChampionCreateActionOutFile, dataRows)
