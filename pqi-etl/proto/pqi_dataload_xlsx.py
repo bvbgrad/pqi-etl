@@ -70,17 +70,17 @@ def generate_username(lastName, firstName):
   if lastName is None and firstName is None:
     userName = secrets.token_urlsafe(9)
   elif lastName == '' or lastName is None:
-    userName = firstName[0:9]
+    userName = firstName[0:9].replace(" ", "")
   elif firstName == '' or firstName is None:
-    userName = lastName[0:9]
+    userName = lastName[0:9].replace(" ", "")
   elif len(lastName) < 9:
     try:
-      userName = lastName + firstName[0:1]
+      userName = lastName.replace(" ", "") + firstName.replace(" ", "")[0:1]
     except Exception as e:
       userName = 'no-name'
       print(e)
   else:
-    userName = lastName[0:9] + firstName[0:1]
+    userName = lastName.replace(" ", "")[0:9] + firstName.replace(" ", "")[0:1]
   userName = userName.lower()
   bduplicate = True
   numSuffix = 1
@@ -151,8 +151,20 @@ def fill_create_row_values(championRow, nonMemberRow):
       rowDict['Username'] = generate_username(championRow['Last Name'], championRow['First Name'])
     elif key == 'Password':
       rowDict['Password'] = generate_password()
-    elif key == 'Organization Name':
+    elif key == 'Organization Name' and championRow['Organization'] is not '':
       rowDict['Organization Name'] = championRow['Organization']
+    elif key == 'Home Address Line 1' and championRow['Title'] is not '':
+      rowDict['Home Address Line 1'] = championRow['Title']
+    elif key == 'Home Address Line 1' and championRow['Address'] is not '':
+      rowDict['Home Address Line 1'] = championRow['Address']
+    elif key == 'Home City' and championRow['City'] is not '':
+      rowDict['Home City'] = championRow['City']
+    elif key == 'Home Location' and championRow['State'] is not '':
+      rowDict['Home Location'] = championRow['State']
+    elif key == 'Home Postal Code' and championRow['Zip Code'] is not '':
+      rowDict['Home Postal Code'] = championRow['Zip Code']
+    elif key == 'Home Phone' and championRow['Phone Number'] is not '':
+      rowDict['Home Phone'] = championRow['Phone Number']
     else:
       rowDict[key] = nonMemberRow[key]
 
@@ -388,21 +400,23 @@ def find_champion_status(championNames, memberNames, nonMemberNames):
     status = 'verify'
     lastNameChampion, firstNameChampion, emailChampion = champion
     emailChampion = emailChampion.lower()
-    for keyValues in memberNames:
-      lastName, firstName, emailMember = keyValues
-      if emailChampion == emailMember.lower():
-        status = 'member'
     for keyValues in nonMemberNames:
       lastName, firstName, emailNonMember = keyValues
       if emailChampion == emailNonMember.lower():
         status = 'non-member'
+    for keyValues in memberNames:
+      lastName, firstName, emailMember = keyValues
+      if emailChampion == emailMember.lower():
+        status = 'member'
     if emailChampion is None or emailChampion == '':
       status = 'verify'
   # Email check failed: see if can find in YM downloads using First & Last names
     if status == 'verify':
       for keyValues in memberNames:
         lastName, firstName, emailMember = keyValues
-        if (firstNameChampion == firstName) and (lastNameChampion == lastName):
+        if (firstName == '' or lastName == ''):
+          continue
+        if (firstNameChampion.lower() == firstName.lower()) and (lastNameChampion.lower() == lastName.lower()):
           if emailChampion != emailMember:
             print(f"{firstNameChampion} {lastNameChampion} status changed based on name match:")
             print(f"   Champion email = '{emailChampion}' - Member email = '{emailMember}'")
@@ -412,7 +426,9 @@ def find_champion_status(championNames, memberNames, nonMemberNames):
           break
       for keyValues in nonMemberNames:
         lastName, firstName, emailNonMember = keyValues
-        if (firstNameChampion == firstName) and (lastNameChampion == lastName):
+        if (firstName == '' or lastName == ''):
+          continue
+        if (firstNameChampion.lower() == firstName.lower()) and (lastNameChampion.lower() == lastName.lower()):
           if emailChampion != emailNonMember:
             print(f"{firstNameChampion} {lastNameChampion} status changed based on name match:")
             print(f"   Champion email = '{emailChampion}' - Non-member email = '{emailNonMember}'")
